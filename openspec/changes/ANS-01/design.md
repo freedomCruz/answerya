@@ -4,7 +4,7 @@
 
 ## Technical Approach
 
-Build the hexagon as a **resolution graph, not a convention**. Every boundary this stage claims is enforced by a mechanism that fails a command, in three independent layers: pnpm strict resolution, TypeScript project references, ESLint zones. The `flow_executions.comment_id` UNIQUE index and the migration journal put idempotency in Postgres, never in application code. No product behaviour ships; the only executable logic is a liveness endpoint, a migration runner, and the Drizzle flow repository whose sole job is validating the graph document on both edges.
+Build the hexagon as a **resolution graph, not a convention**. Every boundary this stage claims is enforced by a mechanism that fails a command, in three layers: pnpm strict resolution, TypeScript `composite` + `rootDir`, and ESLint zones. These layers are ordered, not fully independent: the type layer fires on what resolution lets through, so it narrows the hole rather than covering it alone (see D4). The `flow_executions.comment_id` UNIQUE index and the migration journal put idempotency in Postgres, never in application code. No product behaviour ships; the only executable logic is a liveness endpoint, a migration runner, and the Drizzle flow repository whose sole job is validating the graph document on both edges.
 
 ## Architecture Decisions
 
@@ -29,10 +29,14 @@ Legal directions only. `core → *` is empty by construction.
 
 | Option | Tradeoff | Decision |
 |---|---|---|
-| `references` + `composite: true` per package | Dependency graph is declared; an undeclared import fails `tsc` before ESLint runs | **Chosen** |
+| `references` + `composite: true` per package | Declares the dependency graph and redirects output; with `rootDir: src` an import that resolves to a source file outside the project fails `tsc` (TS6059/TS6307) | **Chosen** |
 | `paths` aliases in `tsconfig.base.json` | Zero setup, but aliases resolve regardless of `package.json` deps — the core→adapters ban degrades to a lint rule one `eslint-disable` away | Rejected |
 
-`tsconfig.base.json` holds compiler flags only (`strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `moduleResolution: bundler`, `isolatedModules`, `verbatimModuleSyntax`). Each package sets `composite`, `rootDir: src`, `outDir: dist`, and its `references`. **`packages/core/tsconfig.json` declares no `references` and no `dependencies`** — that single fact is the primary enforcement of the hexagon.
+`tsconfig.base.json` holds compiler flags only (`strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `module: nodenext`, `moduleResolution: nodenext`, `isolatedModules`, `verbatimModuleSyntax`). Each package sets `composite`, `rootDir: src`, `outDir: dist`, and its `references`.
+
+**Module resolution is `nodenext`, not `bundler`.** `bundler` must be paired with `module: esnext` or `module: preserve`, and TypeScript's own documentation warns it "may allow imports of externalized dependencies that would work in a bundler but are unsafe in Node.js": an extensionless relative specifier type-checks and is emitted verbatim, and Node's ESM resolver rejects it with `ERR_MODULE_NOT_FOUND`. `apps/worker` is a separately deployed long-lived Node process built by `tsc` with no bundler (ADR: two deployables), so under `bundler` it would satisfy AC-2 and AC-4 and then crash on boot, failing AC-1 — green in CI, broken at runtime. `apps/web` overrides to `moduleResolution: bundler` in its own `tsconfig.json` because Next.js bundles it; every tsc-emitted package keeps `nodenext`.
+
+**`packages/core/tsconfig.json` declares no `dependencies` and no `references`.** The load-bearing half is the absent `dependencies`: with pnpm's isolated store nothing is installed to resolve. The absent `references` does not by itself forbid an import — project references govern build orchestration and output redirection, not import admissibility, and an import that resolves to a built `.d.ts` compiles silently. What fires at `tsc` time is `composite` + `rootDir: src`, when resolution reaches a source file outside the project.
 
 ### D3 — Turborepo task graph
 
@@ -58,8 +62,8 @@ lint ──(independent)
 | Layer | Mechanism | Catches |
 |---|---|---|
 | Resolution | pnpm strict `node_modules`; `packages/core/package.json` has **no `dependencies` key** | Any bare specifier — nothing is installed to import |
-| Types | No `references` in core's tsconfig | Cross-package imports at `tsc` time |
-| Lint | ESLint 9 flat config, block scoped to `packages/core/**` | The two holes above miss nothing, but relative escapes and node builtins need naming |
+| Types | `composite: true` + `rootDir: src` in core's tsconfig | An import resolving to a source file outside the project (TS6059/TS6307). Does **not** catch an import that resolves to a built `.d.ts` — absent `references` is not an import ban |
+| Lint | ESLint 9 flat config, block scoped to `packages/core/**` | What the layers above let through: relative escapes, node builtins, and any import that resolves to a built `.d.ts` |
 
 ESLint uses **both** rules, because each misses what the other catches:
 - `import-x/no-restricted-paths` zone `target: packages/core/src` ← `from: packages/adapters` — catches `../../adapters/...` relative traversal, which a specifier pattern cannot see.
@@ -67,7 +71,11 @@ ESLint uses **both** rules, because each misses what the other catches:
 
 Rejected: `eslint-plugin-boundaries` — a layer taxonomy for a project with exactly one boundary.
 
-**Verifying the rule without breaking CI**: a violating file cannot be committed under `packages/core/src` (it would fail `pnpm lint`). Instead a fixture lives at `packages/core/test/fixtures/adapter-import.fixture.ts`, excluded via `eslint.config.js` `ignores`, and a Vitest test runs ESLint programmatically (`new ESLint().lintFiles`) asserting the rule reports. The guard is tested, not trusted.
+**Verifying the rule without breaking CI**: the fixture must live **inside** `packages/core/src`, because `import-x/no-restricted-paths` reports only on files matching the zone `target` — a fixture under `packages/core/test/` sits outside the zone and could never trigger the very relative-traversal case the zone exists to catch. So it lives at `packages/core/src/__fixtures__/adapter-import.fixture.ts` and carries both violations (a relative `../../adapters/...` traversal and a bare `@answerya/adapters` specifier), one per rule.
+
+Two exclusions keep it from breaking the build: `eslint.config.js` `ignores` so `pnpm lint` skips it, and `exclude` in `packages/core/tsconfig.json` so `tsc` never type-checks an import core cannot resolve.
+
+The Vitest test must then pass **`new ESLint({ ignore: false })`**. A file matched by flat-config `ignores` is skipped by `ESLint#lintFiles`, which returns a result carrying only the warning "File ignored because of a matching ignore pattern" and **zero rule messages** — with default options the assertion would be checking nothing. The test asserts both rule ids report, so neither half of the guard can silently stop matching. The guard is tested, not trusted.
 
 ### D5 — Port placement: ports belong to their domain, not to a `ports/` bucket
 
@@ -239,7 +247,7 @@ PR#1 note: `pnpm test` on a workspace with no test files must pass — Vitest ru
 | `docker-compose.yml`, `apps/{web,worker}/Dockerfile`, `.dockerignore`, `.env.example` | Create | Local environment (D9) |
 | `apps/web/**`, `apps/worker/**` | Create | Liveness only |
 | `packages/core/src/{engagement,analytics,identity,shared}/**` | Create | Ports + primitives (D5) |
-| `packages/core/test/fixtures/adapter-import.fixture.ts` | Create | Lint-ignored fixture proving the boundary rule fires (D4) |
+| `packages/core/src/__fixtures__/adapter-import.fixture.ts` | Create | Fixture inside the zone `target`, lint-ignored and tsc-excluded, proving both boundary rules fire (D4) |
 | `packages/contracts/src/{env.ts,flow-graph/**}` | Create | Zod env + graph registry (D8) |
 | `packages/adapters/src/persistence/{schema/**,migrations/**,migrate.ts,flow-repository.ts}` | Create | Drizzle model, migration 0000, validating repository (D6–D8) |
 | `packages/ui/package.json` | Create | Empty placeholder (ANS-04) |
