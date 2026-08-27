@@ -32,10 +32,10 @@ Chain strategy: feature-branch-chain
 ## PR#1 — workspace-foundation (base: `feat/ans-01-foundations`) — verifies AC-3, AC-4
 
 - [ ] 1.1 Create `pnpm-workspace.yaml` declaring `apps/*`, `packages/*`.
-- [ ] 1.2 Create root `package.json` with workspace scripts, Turborepo devDependency, pinned `packageManager`.
+- [ ] 1.2 Create root `package.json` with workspace scripts, pinned `packageManager`, and devDependencies **`turbo` + `vitest`**. Vitest belongs in THIS slice, not PR#3: task 1.11 ships a CI workflow whose `test` job runs task 1.13's `vitest run`, so deferring the dependency to PR#3 makes PR#1's own CI fail on a missing binary. PR#3 adds the config and the first real tests, not the runner.
 - [ ] 1.3 Create `turbo.json` per D3: `build`/`typecheck`/`test` `dependsOn: ["^build"]`, `lint` independent, `db:migrate` `cache: false`.
 - [ ] 1.4 Create `tsconfig.base.json`: `strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, **`module: nodenext` + `moduleResolution: nodenext`**, `isolatedModules`, `verbatimModuleSyntax`. **Do NOT use `moduleResolution: bundler` in the base config** — it requires `module: esnext`/`preserve`, and TypeScript documents that it permits extensionless relative specifiers which `tsc` emits verbatim and Node's ESM resolver then rejects with `ERR_MODULE_NOT_FOUND`. `apps/worker` is a bundler-less Node process, so `bundler` would make it pass AC-2/AC-4 and crash on boot, failing AC-1. `apps/web` overrides to `bundler` in its own tsconfig (Next.js bundles it); every tsc-emitted package stays on `nodenext`.
-- [ ] 1.5 Scaffold `package.json` + `tsconfig.json` (composite, rootDir/outDir, `references` per D1 direction graph) for `apps/web`, `apps/worker`, `packages/core`, `packages/contracts`, `packages/adapters` — no source yet.
+- [ ] 1.5 Scaffold `package.json` + `tsconfig.json` (composite, rootDir/outDir, `references` per D1 direction graph) for `apps/web`, `apps/worker`, `packages/core`, `packages/contracts`, `packages/adapters` — no source yet. **This slice OWNS these stub files**; later slices amend them rather than creating them, so `workspace-foundation`'s "the workspace MUST contain the six packages" requirement closes here. `packages/core`'s stub already omits the `dependencies` key (D4 layer 1).
 - [ ] 1.6 Create `packages/ui/package.json` only — empty placeholder for ANS-04; no other content.
 - [ ] 1.7 Create `eslint.config.js` flat config with `import-x/no-restricted-paths` zone (`target: packages/core/src`, `from: packages/adapters`) and `no-restricted-imports` patterns (`@answerya/adapters*`, `@answerya/contracts*`, `zod`, `drizzle-orm`, `node:*`) scoped to `packages/core/**`. **Pin the zone `basePath` to an absolute path derived from `eslint.config.js`'s own location (repo root), not `process.cwd()`** — Turborepo runs `lint` per-package, so a cwd-relative `basePath` would silently match nothing and the guard would pass without ever checking anything.
 - [ ] 1.8 Create `.prettierrc`.
@@ -43,8 +43,8 @@ Chain strategy: feature-branch-chain
 - [ ] 1.10 Create root `.gitignore`.
 - [ ] 1.11 Create `.github/workflows/ci.yml`: `lint` → `typecheck` → `test`, sequential, fail-fast. Ships unverified (no GitHub remote exists yet); activates when a remote appears — do not add a task requiring a push or a green run.
 - [ ] 1.12 Create `CONTRIBUTING.md`: branch naming (`feat/ans-<NN>-<slug>`), PR workflow, commit conventions.
-- [ ] 1.13 Add root `test` script invoking `vitest run --passWithNoTests` so `pnpm test` exits `0` on a workspace with no test files yet (until PR#3 lands Vitest projects).
-- [ ] 1.14 Verify: `pnpm install` exit `0`; `pnpm lint` exit `0` (AC-3); `pnpm typecheck` exit `0` (AC-4).
+- [ ] 1.13 Add root `test` script invoking `vitest run --passWithNoTests` so `pnpm test` exits `0` on a workspace with no test files yet. No `vitest.config.ts` is needed at this point — Vitest runs on defaults and `--passWithNoTests` makes an empty run succeed. PR#3 adds the config with `test.projects`.
+- [ ] 1.14 Verify: `pnpm install` exit `0`; `pnpm lint` exit `0` (AC-3); `pnpm typecheck` exit `0` (AC-4); **`pnpm test` exit `0`** — this one is mandatory here, because the CI workflow this slice ships runs `test`, and omitting it locally would let PR#1 merge with a red pipeline.
 
 ## PR#2 — local-environment (base: PR#1 branch) — verifies AC-1, AC-2, AC-10
 
@@ -60,8 +60,8 @@ Chain strategy: feature-branch-chain
 
 ## PR#3 — domain-core (base: PR#2 branch) — verifies AC-6, AC-8
 
-- [ ] 3.1 Create `packages/core/package.json` with **no `dependencies` key** (D4 layer 1).
-- [ ] 3.2 Create `packages/core/tsconfig.json` with **no `references`** (D2/D4 layer 2 — the primary hexagon enforcement).
+- [ ] 3.1 Amend `packages/core/package.json` (created as a stub in task 1.5): add the `exports` map and test script. It MUST still carry **no `dependencies` key** (D4 layer 1).
+- [ ] 3.2 Amend `packages/core/tsconfig.json` (stub from task 1.5): keep **no `references`**, and ensure `composite: true` + `rootDir: src` are set — those are what actually error at `tsc` time (TS6059/TS6307) when an import resolves to a source file outside the project. Absent `references` is NOT an import ban on its own: project references govern build orchestration and output redirection, and an import resolving to a built `.d.ts` compiles silently. The load-bearing enforcement is the absent `dependencies` key (D4 layer 1); this is layer 2, and it narrows the hole rather than closing it.
 - [ ] 3.3 Create `packages/core/src/shared/result.ts` — `Result<T,E>` using the const-object pattern (`RESULT_KIND`).
 - [ ] 3.4 Create `packages/core/src/shared/clock.ts` — `Clock` interface (`now(): Date`).
 - [ ] 3.5 Create `packages/core/src/engagement/ports/{comment-source,private-reply-sender,public-replier,execution-ledger,flow-repository}.ts` — 5 ports; `ExecutionLedger.claim()` returns `ALREADY_CLAIMED` as a success value, never `Err`.
