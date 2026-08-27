@@ -1,0 +1,36 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+dist/
+build/
+.next/
+out/
+.turbo/
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Testing
+coverage/
+.nyc_output/
+
+# Editors & OS
+.DS_Store
+.idea/
+*.swp
+
+# Tooling caches
+.atl/
+.claude/settings.local.json
+
+# Local data volumes
+docker/data/
