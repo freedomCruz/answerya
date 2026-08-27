@@ -1,0 +1,108 @@
+schema: spec-driven
+
+# NOTE: this is a greenfield repository. No source code exists yet.
+# Everything under `stack:` is PLANNED (approved in PRDs/ADRs), not detected
+# from installed dependencies. Re-run sdd-init detection once ANS-01 lands
+# `package.json` so this file can be upgraded from planned to detected.
+
+context: |
+  Project: answerya — self-hosted comment-to-DM automation + multi-platform
+  social analytics (Instagram, Facebook, YouTube, TikTok). Single-tenant.
+  Stack (planned, ANS-01): pnpm workspaces + Turborepo, TS strict
+  (noUncheckedIndexedAccess), Next.js 15 (apps/web), Node+BullMQ (apps/worker),
+  Postgres 17 + Drizzle, Zod 4, Base UI v1 + Tailwind 4, @xyflow/react,
+  Vitest + Testcontainers + Playwright, Docker Compose.
+  Architecture: hexagonal + screaming. packages/core is pure domain (zero
+  runtime deps), declares ports only; packages/adapters implements them
+  (meta, youtube, tiktok, persistence). ESLint forbids core -> adapters.
+  Critical invariant: flow_executions.comment_id UNIQUE index guarantees one
+  private reply per comment ever; idempotency lives in Postgres
+  (INSERT ... ON CONFLICT DO NOTHING), never in application logic.
+  Flows persist as flows.graph jsonb + schema_version, Zod-validated per
+  node type on write AND read (not normalized rows, not a canvas-library blob).
+
+stack:
+  status: planned            # not yet detected — no package.json/go.mod/pyproject.toml present
+  monorepo: pnpm workspaces + Turborepo
+  language: "TypeScript strict, noUncheckedIndexedAccess"
+  apps:
+    web: "Next.js 15 App Router + React 19"
+    worker: "Node + BullMQ over Redis"
+  db: "Postgres 17 + Drizzle ORM"
+  validation: "Zod 4"
+  ui: "Base UI v1 + Tailwind 4 (no generated shadcn/ui), Recharts"
+  flow_canvas: "@xyflow/react (React Flow)"
+  testing_stack: "Vitest + Testcontainers (integration), Playwright (E2E)"
+  infra: "Docker Compose (postgres, redis, web, worker; cloudflared dev-only)"
+
+architecture:
+  style: "Hexagonal + screaming architecture, single-tenant"
+  packages:
+    core: "packages/core — pure domain, zero runtime deps, declares ports only (CommentSource, PrivateReplySender, PublicReplier, ExecutionLedger, FlowRepository, MetricSource, TokenVault). ESLint rule forbids importing adapters from core."
+    adapters: "packages/adapters — meta, youtube, tiktok, persistence (Drizzle)"
+    contracts: "packages/contracts — Zod schemas shared web/worker"
+    ui: "packages/ui — design system on Base UI primitives"
+  critical_invariant: "flow_executions.comment_id UNIQUE index — Meta allows exactly ONE private reply per comment, forever. Idempotency guaranteed by the database (INSERT ... ON CONFLICT DO NOTHING), never by application logic."
+  flow_persistence: "flows.graph jsonb + schema_version, Zod-validated per node type on write AND read"
+
+testing:
+  strict_tdd: false           # No test runner exists yet; unavailable until ANS-01 installs Vitest. Revisit once package.json + vitest.config land.
+  detected: 2026-08-27
+  test_runner:
+    status: not_installed
+    planned_command: "pnpm test (Turborepo pipeline)"
+    planned_framework: "Vitest"
+  test_layers:
+    unit: { available: false, tool: "Vitest (planned)" }
+    integration: { available: false, tool: "Testcontainers + Vitest (planned)" }
+    e2e: { available: false, tool: "Playwright (planned)" }
+  coverage:
+    available: false
+    planned_command: "vitest --coverage"
+  quality_tools:
+    linter: { available: false, planned_command: "eslint (pnpm lint)" }
+    type_checker: { available: false, planned_command: "tsc (pnpm typecheck)" }
+    formatter: { available: false, planned_command: "prettier" }
+
+naming_convention:
+  changes: "ANS-01 .. ANS-08, one git branch per stage: feat/ans-<NN>-<slug>"
+  gating: "A stage does not start until the previous one is merged to main and archived."
+  stages:
+    - "ANS-01 Foundations"
+    - "ANS-02 Meta Ingestion"
+    - "ANS-03 Execution Engine"
+    - "ANS-04 Design Language + UI Kit"
+    - "ANS-05 Flow Builder Canvas"
+    - "ANS-06 Metrics Ingestion"
+    - "ANS-07 Dashboard"
+    - "ANS-08 Intelligence + Deploy"
+
+rules:
+  proposal:
+    - Include rollback plan for risky changes
+    - Reference the matching PRD in the Obsidian vault (Answerya/01_Product/PRDs/)
+  specs:
+    - Use Given/When/Then for scenarios
+    - Use RFC 2119 keywords (MUST, SHALL, SHOULD, MAY)
+    - The flow_executions.comment_id UNIQUE index requirement MUST be traceable in any spec touching execution
+  design:
+    - Include sequence diagrams for complex flows
+    - Document architecture decisions with rationale
+    - Cross-reference ADR_Answerya_Hexagonal_Worker_Split and ADR_Answerya_Frontend_Design_And_Flow_Canvas
+  tasks:
+    - Group by phase, use hierarchical numbering
+    - Keep tasks completable in one session
+    - Respect the 400-line review budget; propose chained PR slices when a stage risks exceeding it (ANS-01 is pre-split into PR#1 infra / PR#2 domain+Drizzle+tests)
+  apply:
+    guidelines:
+      - Follow hexagonal boundaries; core MUST NOT import adapters
+      - Idempotency guarantees MUST be enforced at the database layer, never solely in application code
+    tdd: false          # No test runner until ANS-01 lands Vitest; flip to true once available
+    test_command: ""
+  verify:
+    test_command: ""     # to be set once ANS-01 lands `pnpm test`
+    build_command: ""    # to be set once ANS-01 lands `pnpm build`
+    coverage_threshold: 0
+  archive:
+    - Warn before merging destructive deltas
+    - A stage archive must confirm the matching ADR/PRD status update in Obsidian (out of scope for this repo's git history)
