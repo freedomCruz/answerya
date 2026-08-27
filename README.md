@@ -36,9 +36,11 @@ packages/contracts  Zod schemas shared across apps
 packages/ui    design system on Base UI primitives
 ```
 
-Automation flows are stored as a graph (`flows`, `flow_nodes`, `flow_edges`) owned by the
-domain, not as a serialized blob of the canvas library. The execution engine runs in the
-worker without React; the canvas is only an editor over that data.
+Automation flows are stored as a domain-owned document (`flows.graph` jsonb, validated per
+node type with Zod and versioned via `schema_version`), never as a serialized blob of the
+canvas library. The execution engine runs in the worker without React; the canvas is only an
+editor over that document. Execution records stay relational — `flow_executions.comment_id`
+carries a UNIQUE index, the constraint that guarantees one DM per comment.
 
 Front-end stack: Base UI v1 primitives with a project-specific visual language (no
 generated shadcn/ui theme), `@xyflow/react` for the flow canvas, Recharts for analytics.
