@@ -3,8 +3,8 @@
 Self-hosted comment-to-DM automation and multi-platform social analytics.
 
 Replaces the ManyChat "comment X and I'll DM you the link" workflow with an owned
-implementation on top of the Meta Private Replies API, plus a unified dashboard for
-Instagram, Facebook, YouTube and TikTok performance data.
+implementation on top of the Meta Private Replies API, including a visual flow builder,
+plus a unified dashboard for Instagram, Facebook, YouTube and TikTok performance data.
 
 ## Platform capabilities
 
@@ -28,13 +28,20 @@ Hexagonal, single-tenant. `packages/core` holds pure domain logic and defines po
 are testable without Postgres, Redis or network access.
 
 ```
-apps/web       Next.js 15 dashboard + webhook receiver
+apps/web       Next.js 15 dashboard, flow builder and webhook receiver
 apps/worker    BullMQ consumers and schedulers
 packages/core  domain: engagement, analytics, identity, shared
 packages/adapters  meta, youtube, tiktok, persistence
 packages/contracts  Zod schemas shared across apps
-packages/ui    atomic design system
+packages/ui    design system on Base UI primitives
 ```
+
+Automation flows are stored as a graph (`flows`, `flow_nodes`, `flow_edges`) owned by the
+domain, not as a serialized blob of the canvas library. The execution engine runs in the
+worker without React; the canvas is only an editor over that data.
+
+Front-end stack: Base UI v1 primitives with a project-specific visual language (no
+generated shadcn/ui theme), `@xyflow/react` for the flow canvas, Recharts for analytics.
 
 ## Status
 
