@@ -220,11 +220,23 @@ The flagship test asserts three things, not one: (1) `INSERT ... ON CONFLICT (co
 
 ### D11 — PR slicing: the pre-approved two-way split is revised to four
 
-The proposal's PR#1 (monorepo + Compose + CI + commitlint) estimates ~735 authored lines on its own — 1.8× the budget. Revised to four chained slices on `feat/ans-01-foundations`, each mapping 1:1 to a capability spec.
+The proposal's PR#1 (monorepo + Compose + CI + commitlint) estimates ~735 authored lines on its own — 1.8× the budget. Revised to four chained slices on `feat/ans-01-foundations`.
+
+**Slices are delivery units, not capability closures.** The mapping is deliberately not 1:1 — PR#4 carries two specs, and `testing-harness` is split across PR#3 (Vitest projects, core tests, lint-guard test) and PR#4 (Testcontainers, integration layer, the UNIQUE idempotency test). A capability spec closes when its LAST contributing slice merges, not when the slice sharing its name does:
+
+| Capability spec | Contributing slices | Closes at |
+|---|---|---|
+| `workspace-foundation` | #1 | #1 |
+| `local-environment` | #2 | #2 |
+| `domain-core` | #1 (stub), #3 | #3 |
+| `persistence-schema` | #1 (stub), #4 | #4 |
+| `testing-harness` | #1 (runner), #3, #4 | #4 |
+
+PR#1 must therefore create `package.json` + `tsconfig.json` stubs for all six workspace members, because `workspace-foundation`'s first requirement is that the workspace *contains* them — a slice cannot close a spec whose subject it never creates. It must also install Vitest, because it ships the CI workflow that runs `test`.
 
 | PR | Scope | Est. authored lines | Verification | Risk |
 |---|---|---|---|---|
-| #1 `workspace-foundation` | pnpm-workspace, root package.json, turbo.json, tsconfig.base, ESLint flat config incl. core zones, Prettier, commitlint + husky, `.gitignore`, CI workflow, `CONTRIBUTING.md`, empty `packages/ui` | ~330 | `pnpm lint`, `pnpm typecheck` (AC-3, AC-4) | Low |
+| #1 `workspace-foundation` | pnpm-workspace, root package.json (incl. Vitest devDependency), turbo.json, tsconfig.base, **`package.json` + `tsconfig.json` stubs for all six workspace members** (`apps/web`, `apps/worker`, `packages/core`, `packages/contracts`, `packages/adapters`, `packages/ui`), ESLint flat config incl. core zones, Prettier, commitlint + husky, `.gitignore`, CI workflow, `CONTRIBUTING.md` | ~330 | `pnpm lint`, `pnpm typecheck` (AC-3, AC-4) | Low |
 | #2 `local-environment` | `docker-compose.yml`, two Dockerfiles, `.dockerignore`, `.env.example`, `apps/web` liveness + `/api/health`, `apps/worker` liveness, `contracts/env.ts` | ~350 | AC-1, AC-2, AC-10 | Medium |
 | #3 `domain-core` | `packages/core` (7 ports, `Result`, `Clock`, barrels), Vitest root projects config, core unit tests, ESLint-rule test + fixture | ~330 | AC-6, AC-8 | Low |
 | #4 `persistence-schema` + `testing-harness` | contracts flow-graph Zod + registry, Drizzle schema (10 tables), migration 0000, `migrate.ts`, `DrizzleFlowRepository`, Testcontainers `globalSetup`, UNIQUE idempotency test | ~390 | AC-5, AC-7, AC-9 | **High** |
