@@ -26,6 +26,10 @@ export default tseslint.config(
       "**/.next/**",
       "**/.turbo/**",
       "**/coverage/**",
+      // Next.js auto-generates and regenerates this file on every build; it
+      // is explicitly documented as "should not be edited" and its
+      // triple-slash references are Next.js's own convention, not ours.
+      "**/next-env.d.ts",
     ],
   },
   js.configs.recommended,
