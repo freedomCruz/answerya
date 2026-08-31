@@ -52,3 +52,39 @@ pnpm test        # run the Vitest suite
 `packages/contracts`, `zod`, `drizzle-orm`, or any `node:*` builtin. This is
 enforced at three layers (pnpm resolution, TypeScript project references,
 ESLint) — see `openspec/changes/ANS-01/design.md` (D4) for the full rationale.
+
+## Local Environment (Docker Compose)
+
+```bash
+cp .env.example .env   # fill in local-only values
+docker compose up -d   # postgres, redis, web, worker — healthy in <60s
+```
+
+### The two-DSN gotcha
+
+`DATABASE_URL` means a different host depending on where the process runs:
+
+- **Host-run commands** (e.g. `pnpm db:migrate` run directly on your machine)
+  need `DATABASE_URL` pointing at `localhost:${POSTGRES_PORT}` — this is the
+  value `.env.example` ships.
+- **Compose services** (`web`, `worker`) get `DATABASE_URL` overridden in
+  `docker-compose.yml` to the internal Docker network hostname
+  `postgres:5432`, because `localhost` inside a container refers to the
+  container itself, not the `postgres` service.
+
+This bites everyone once: if a host command can't reach Postgres, check
+whether `.env`'s `DATABASE_URL` still says `localhost`, not `postgres`.
+
+### Opt-in tunnel profile
+
+`cloudflared` is not part of the default `docker compose up -d` stack. Start
+it explicitly when you need a public HTTPS callback URL (e.g. to verify a
+Meta webhook):
+
+```bash
+docker compose --profile tunnel up -d
+```
+
+The free-tier `trycloudflare.com` URL changes on every restart — check the
+`cloudflared` container logs for the new URL, and re-register it with the
+Meta app dashboard each time the tunnel restarts.
