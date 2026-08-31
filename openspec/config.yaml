@@ -92,7 +92,7 @@ rules:
   tasks:
     - Group by phase, use hierarchical numbering
     - Keep tasks completable in one session
-    - Respect the 400-line review budget; propose chained PR slices when a stage risks exceeding it (ANS-01 is pre-split into PR#1 infra / PR#2 domain+Drizzle+tests)
+    - Respect the 400-line review budget; propose chained PR slices when a stage risks exceeding it (ANS-01 shipped as four chained slices (workspace-foundation, local-environment, domain-core, persistence-schema+testing-harness); its original two-PR estimate proved 1.8x over budget)
   apply:
     guidelines:
       - Follow hexagonal boundaries; core MUST NOT import adapters

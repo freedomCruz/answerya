@@ -70,6 +70,11 @@ Materialise `ADR_Answerya_Hexagonal_Worker_Split` structurally before any behavi
 
 ## Rollback Plan
 
+> **Superseded at archive.** Design decision D11 replaced this two-PR split with four chained
+> slices after estimating the original PR#1 at ~735 authored lines, 1.8x the review budget.
+> What actually shipped: PR#1 `workspace-foundation`, PR#2 `local-environment`,
+> PR#3 `domain-core`, PR#4 `persistence-schema` + `testing-harness`.
+
 Chained PRs on `feat/ans-01-foundations`, each under 400 lines:
 - **PR#1 — infrastructure**: monorepo, Docker Compose, CI, commitlint. Targets the stage branch.
 - **PR#2 — domain + persistence**: `packages/core`, `packages/contracts`, Drizzle schema + first migration, Vitest/Testcontainers. Targets PR#1's branch.
