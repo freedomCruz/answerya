@@ -11,5 +11,8 @@
   "dependencies": {
     "@answerya/adapters": "workspace:*",
     "@answerya/contracts": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "24.13.3"
   }
 }
