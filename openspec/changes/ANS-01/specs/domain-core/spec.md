@@ -67,5 +67,15 @@ An ESLint rule MUST forbid any import from `packages/adapters` inside `packages/
 #### Scenario: No adapter imports exist in core
 
 - GIVEN the current state of `packages/core/src`
-- WHEN a reviewer runs `grep -r "from '@answerya/adapters" packages/core/src | wc -l`
+- WHEN a reviewer runs `grep -rE "from ['\"]@answerya/adapters" packages/core/src --exclude-dir=__fixtures__ | wc -l`
 - THEN the result MUST be `0` (Traces: AC-8)
+- AND running the same command WITHOUT `--exclude-dir=__fixtures__` MUST return a non-zero count, proving the check is not vacuous
+
+> **Amended during PR#3.** The original scenario read `grep -r "from '@answerya/adapters" ...` with a
+> single-quoted specifier and no fixture exclusion. Both halves were defective. First, this project's
+> Prettier config sets `singleQuote: false`, so no import in the codebase ever matches a single-quoted
+> pattern — the criterion returned `0` even with a file actively violating the boundary, which is a
+> false pass, not a proof. Second, the boundary fixture required by `testing-harness` must live inside
+> `packages/core/src` and must contain the very import this criterion forbids; the fixture cannot prove
+> the guard fires without committing the violation. The amended form excludes the fixture directory and
+> adds the inverse assertion, so the criterion fails loudly if the fixture is ever deleted or renamed.
