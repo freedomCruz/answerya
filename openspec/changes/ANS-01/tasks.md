@@ -61,20 +61,26 @@ Chain strategy: feature-branch-chain
 
 ## PR#3 — domain-core (base: PR#2 branch) — verifies AC-6, AC-8
 
-- [ ] 3.1 Amend `packages/core/package.json` (created as a stub in task 1.5): add the `exports` map and test script. It MUST still carry **no `dependencies` key** (D4 layer 1).
-- [ ] 3.2 Amend `packages/core/tsconfig.json` (stub from task 1.5): keep **no `references`**, and ensure `composite: true` + `rootDir: src` are set — those are what actually error at `tsc` time (TS6059/TS6307) when an import resolves to a source file outside the project. Absent `references` is NOT an import ban on its own: project references govern build orchestration and output redirection, and an import resolving to a built `.d.ts` compiles silently. The load-bearing enforcement is the absent `dependencies` key (D4 layer 1); this is layer 2, and it narrows the hole rather than closing it.
-- [ ] 3.3 Create `packages/core/src/shared/result.ts` — `Result<T,E>` using the const-object pattern (`RESULT_KIND`).
-- [ ] 3.4 Create `packages/core/src/shared/clock.ts` — `Clock` interface (`now(): Date`).
-- [ ] 3.5 Create `packages/core/src/engagement/ports/{comment-source,private-reply-sender,public-replier,execution-ledger,flow-repository}.ts` — 5 ports; `ExecutionLedger.claim()` returns `ALREADY_CLAIMED` as a success value, never `Err`.
-- [ ] 3.6 Create `packages/core/src/analytics/ports/metric-source.ts`.
-- [ ] 3.7 Create `packages/core/src/identity/ports/token-vault.ts`.
-- [ ] 3.8 Create barrel exports per domain folder + `packages/core/src/index.ts`.
-- [ ] 3.9 Create root `vitest.config.ts` with `test.projects`: `core` (no setup), `contracts` (no setup), `adapters:unit` (no setup); declare `adapters:integration` (`globalSetup`) as inert placeholder until PR#4 supplies its setup file.
-- [ ] 3.10 Create `packages/core/vitest.config.ts` (no setup, no infra).
-- [ ] 3.11 Write `packages/core` unit tests: `Result` OK/Err variants, `Clock` substitution, port type-level compilation.
-- [ ] 3.12 Create the boundary fixture at **`packages/core/src/__fixtures__/adapter-import.fixture.ts`** — it MUST live inside `packages/core/src`, because `import-x/no-restricted-paths` reports only on files matching the zone `target`; a fixture under `packages/core/test/` sits outside the zone and could never trigger the relative-traversal case the zone exists to catch. Include BOTH violations, one per rule: a relative `../../adapters/...` traversal (zone rule) and a bare `@answerya/adapters` import (`no-restricted-imports`). Exclude it twice so it cannot break the build: `ignores` in `eslint.config.js`, and `exclude` in `packages/core/tsconfig.json` so `tsc` never type-checks an unresolvable import.
-- [ ] 3.13 Write a Vitest test running ESLint programmatically against the fixture with **`new ESLint({ ignore: false })`** — this flag is mandatory: a file matched by flat-config `ignores` is skipped by `lintFiles`, which returns only the warning "File ignored because of a matching ignore pattern" and ZERO rule messages, so the default-options version of this test asserts on nothing. Assert that BOTH rule ids report (`import-x/no-restricted-paths` and `no-restricted-imports`), so neither half of the guard can silently stop matching. Invoke it with the same cwd Turborepo uses for the root `lint` task, so a `basePath` regression (task 1.7) is caught here rather than passing silently.
-- [ ] 3.14 Verify: `pnpm --filter @answerya/core test` exit `0` with Docker stopped (AC-6); `grep -r "from '@answerya/adapters" packages/core/src | wc -l` → `0` (AC-8).
+- [x] 3.1 Amend `packages/core/package.json` (created as a stub in task 1.5): add the `exports` map and test script. It MUST still carry **no `dependencies` key** (D4 layer 1).
+- [x] 3.2 Amend `packages/core/tsconfig.json` (stub from task 1.5): keep **no `references`**, and ensure `composite: true` + `rootDir: src` are set — those are what actually error at `tsc` time (TS6059/TS6307) when an import resolves to a source file outside the project. Absent `references` is NOT an import ban on its own: project references govern build orchestration and output redirection, and an import resolving to a built `.d.ts` compiles silently. The load-bearing enforcement is the absent `dependencies` key (D4 layer 1); this is layer 2, and it narrows the hole rather than closing it.
+- [x] 3.3 Create `packages/core/src/shared/result.ts` — `Result<T,E>` using the const-object pattern (`RESULT_KIND`).
+- [x] 3.4 Create `packages/core/src/shared/clock.ts` — `Clock` interface (`now(): Date`).
+- [x] 3.5 Create `packages/core/src/engagement/ports/{comment-source,private-reply-sender,public-replier,execution-ledger,flow-repository}.ts` — 5 ports; `ExecutionLedger.claim()` returns `ALREADY_CLAIMED` as a success value, never `Err`.
+- [x] 3.6 Create `packages/core/src/analytics/ports/metric-source.ts`.
+- [x] 3.7 Create `packages/core/src/identity/ports/token-vault.ts`.
+- [x] 3.8 Create barrel exports per domain folder + `packages/core/src/index.ts`.
+- [x] 3.9 Create root `vitest.config.ts` with `test.projects`: `core` (no setup), `contracts` (no setup), `adapters:unit` (no setup); declare `adapters:integration` (`globalSetup`) as inert placeholder until PR#4 supplies its setup file.
+- [x] 3.10 Create `packages/core/vitest.config.ts` (no setup, no infra).
+- [x] 3.11 Write `packages/core` unit tests: `Result` OK/Err variants, `Clock` substitution, port type-level compilation.
+- [x] 3.12 Create the boundary fixture at **`packages/core/src/__fixtures__/adapter-import.fixture.ts`** — it MUST live inside `packages/core/src`, because `import-x/no-restricted-paths` reports only on files matching the zone `target`; a fixture under `packages/core/test/` sits outside the zone and could never trigger the relative-traversal case the zone exists to catch. Include BOTH violations, one per rule: a relative `../../adapters/...` traversal (zone rule) and a bare `@answerya/adapters` import (`no-restricted-imports`). Exclude it twice so it cannot break the build: `ignores` in `eslint.config.js`, and `exclude` in `packages/core/tsconfig.json` so `tsc` never type-checks an unresolvable import.
+- [x] 3.13 Write a Vitest test running ESLint programmatically against the fixture with **`new ESLint({ ignore: false })`** — this flag is mandatory: a file matched by flat-config `ignores` is skipped by `lintFiles`, which returns only the warning "File ignored because of a matching ignore pattern" and ZERO rule messages, so the default-options version of this test asserts on nothing. Assert that BOTH rule ids report (`import-x/no-restricted-paths` and `no-restricted-imports`), so neither half of the guard can silently stop matching. Invoke it with the same cwd Turborepo uses for the root `lint` task, so a `basePath` regression (task 1.7) is caught here rather than passing silently.
+- [x] 3.14 Verify: `pnpm --filter @answerya/core test` exit `0` with Docker stopped (AC-6); AC-8 grep → `0`.
+
+  **AC-8 conflicts with task 3.12 as literally written and must be run excluding the fixture.** The spec's scenario is `grep -r "from '@answerya/adapters" packages/core/src | wc -l` → `0`, but 3.12 deliberately places a file under that exact path containing that exact import — the fixture cannot prove the guard fires unless it commits the violation the guard forbids. The intent of AC-8 is "no PRODUCTION file in core imports adapters", and a lint-ignored, tsc-excluded fixture is not production code. Run it as:
+
+  `grep -r "from '@answerya/adapters" packages/core/src --exclude-dir=__fixtures__ | wc -l` → `0`
+
+  and additionally assert the fixture IS found without the exclusion, so the check cannot silently pass because the fixture disappeared. Record this as a spec deviation in apply-progress; `sdd-verify` must see the reasoning rather than a criterion quietly reinterpreted.
 
 ## PR#4 — persistence-schema + testing-harness (base: PR#3 branch) — verifies AC-5, AC-7, AC-9 — HIGH budget risk
 
