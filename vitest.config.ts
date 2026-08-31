@@ -1,15 +1,14 @@
 // Workspace Vitest configuration (task 3.9, design D10).
 //
-// Each entry is a package directory owning its own `vitest.config.ts`.
-// `packages/core` (task 3.10), `packages/contracts`, and
-// `packages/adapters` unit tests all run with no setup file — zero
-// infrastructure, zero network, zero database (AC-6).
-//
-// `adapters:integration` is declared as an INERT PLACEHOLDER for this PR:
-// its project name is reserved so the workspace shape stays stable, but it
-// carries no `globalSetup` and matches no test files yet. PR#4 supplies
-// the Testcontainers-backed `globalSetup` and the matching test files
-// together — do not add either half here.
+// `packages/core` and `packages/contracts` are directory-string entries
+// (each owns its own single-project `vitest.config.ts`). `packages/adapters`
+// is declared inline as two named projects instead, because Vitest 4 does
+// not merge a nested `test.projects` array from a referenced package
+// config — only its top-level `test` config would apply, silently
+// dropping the `adapters:integration` project and its `globalSetup`.
+// `adapters:unit` runs with zero infrastructure (AC-6); `adapters:integration`
+// owns the Testcontainers-backed setup (task 4.19–4.20) and is the only
+// project that ever touches Postgres.
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
@@ -22,16 +21,16 @@ export default defineConfig({
           name: "adapters:unit",
           root: "packages/adapters",
           include: ["src/**/*.test.ts"],
-          exclude: ["src/**/*.integration.test.ts"],
         },
       },
       {
         test: {
-          // No `include` pattern yet: no test matches until PR#4 adds
-          // both `include` and `globalSetup` together.
           name: "adapters:integration",
           root: "packages/adapters",
-          include: [],
+          include: ["test/integration/**/*.test.ts"],
+          globalSetup: ["test/integration/global-setup.ts"],
+          hookTimeout: 60_000,
+          testTimeout: 30_000,
         },
       },
     ],

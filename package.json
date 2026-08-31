@@ -32,6 +32,6 @@
     "vitest": "4.1.11"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["unrs-resolver"]
+    "onlyBuiltDependencies": ["unrs-resolver", "esbuild"]
   }
 }
