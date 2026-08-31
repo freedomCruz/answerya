@@ -3,12 +3,36 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./persistence": {
+      "types": "./dist/persistence/index.d.ts",
+      "default": "./dist/persistence/index.js"
+    }
+  },
+  "types": "./dist/index.d.ts",
   "scripts": {
     "build": "tsc -b",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
-    "lint": "eslint ."
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json",
+    "lint": "eslint .",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx src/persistence/migrate.ts",
+    "test": "vitest run"
   },
   "dependencies": {
-    "@answerya/contracts": "workspace:*"
+    "@answerya/contracts": "workspace:*",
+    "@answerya/core": "workspace:*",
+    "drizzle-orm": "0.45.2",
+    "pg": "8.23.0"
+  },
+  "devDependencies": {
+    "@testcontainers/postgresql": "12.1.0",
+    "@types/pg": "8.23.1",
+    "drizzle-kit": "0.31.10",
+    "tsx": "4.23.13",
+    "vitest": "4.1.11"
   }
 }
