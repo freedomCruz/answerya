@@ -30,6 +30,11 @@ export default tseslint.config(
       // is explicitly documented as "should not be edited" and its
       // triple-slash references are Next.js's own convention, not ours.
       "**/next-env.d.ts",
+      // Deliberately violates the core purity guard (task 3.12) so the
+      // guard itself can be lint-tested (task 3.13). Excluded here so it
+      // never fails `pnpm lint`; the test re-lints it directly with
+      // `new ESLint({ ignore: false })` to bypass this exact entry.
+      "packages/core/src/__fixtures__/adapter-import.fixture.ts",
     ],
   },
   js.configs.recommended,
@@ -68,8 +73,15 @@ export default tseslint.config(
   },
   {
     // Core purity guard (D4): what pnpm resolution and the TS project
-    // boundary let through, ESLint catches here.
-    files: ["packages/core/**/*.{ts,tsx}"],
+    // boundary let through, ESLint catches here. Scoped to shipped domain
+    // source under `src/`, excluding `__tests__/`: the guard's own test
+    // tooling (task 3.13) legitimately uses `node:*` to compute a fixture
+    // path and invoke ESLint programmatically — it verifies the boundary,
+    // it does not cross it. The fixture under `__fixtures__/` stays
+    // in-zone deliberately (task 3.12) and is excluded only via the
+    // top-level `ignores` above, so it is still lint-tested directly.
+    files: ["packages/core/src/**/*.{ts,tsx}"],
+    ignores: ["packages/core/src/__tests__/**"],
     rules: {
       "import-x/no-restricted-paths": [
         "error",
