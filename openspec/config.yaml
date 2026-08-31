@@ -97,11 +97,11 @@ rules:
     guidelines:
       - Follow hexagonal boundaries; core MUST NOT import adapters
       - Idempotency guarantees MUST be enforced at the database layer, never solely in application code
-    tdd: false          # No test runner until ANS-01 lands Vitest; flip to true once available
-    test_command: ""
+    tdd: true
+    test_command: "pnpm test"
   verify:
-    test_command: ""     # to be set once ANS-01 lands `pnpm test`
-    build_command: ""    # to be set once ANS-01 lands `pnpm build`
+    test_command: "pnpm test"
+    build_command: "pnpm build"
     coverage_threshold: 0
   archive:
     - Warn before merging destructive deltas
