@@ -16,6 +16,7 @@
     "lint": "eslint ."
   },
   "dependencies": {
+    "@answerya/core": "workspace:*",
     "zod": "4.5.4"
   },
   "devDependencies": {
