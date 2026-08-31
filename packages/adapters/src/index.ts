@@ -1,3 +1,4 @@
-// Placeholder entry point for @answerya/adapters.
-// Persistence (Drizzle) lands in ANS-01 PR#4.
+// Root entry point for @answerya/adapters. Persistence lives behind the
+// `./persistence` subpath export (task 4.18) — nothing is re-exported
+// here to keep `flows` reachable only through `DrizzleFlowRepository`.
 export {};
